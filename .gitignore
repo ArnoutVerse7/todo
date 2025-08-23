@@ -1,0 +1,21 @@
+# OS / editor rommel
+.DS_Store
+Thumbs.db
+*.log
+
+# Geheimen / env-variabelen
+.env
+.env.local
+
+# IDE instellingen (optioneel)
+.vscode/
+.idea/
+
+# Dependencies (voor het geval je later Composer/Node gebruikt)
+vendor/
+node_modules/
+
+dist/
+
+public/uploads/*
+!public/uploads/.gitkeep
