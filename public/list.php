@@ -16,15 +16,17 @@ $stmt->execute([$listId, $_SESSION['user_id']]);
 $list = $stmt->fetch();
 if (!$list) { http_response_code(404); exit('Lijst niet gevonden'); }
 
-$err = $msg = null;
+$err = null;
+$msg = ($_GET['msg'] ?? '') === 'added' ? 'Taak toegevoegd' : null;
 
-// toevoegen
+// toevoegen (PRG)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
   Security::checkCsrf($_POST['csrf'] ?? '');
   try {
     $task = new Task($listId, $_POST['title'] ?? '', $_POST['priority'] ?? 'low');
     $task->save();
-    $msg = 'Taak toegevoegd';
+    header('Location: /todo/public/list.php?id='.$listId.'&msg=added'); // PRG
+    exit;
   } catch (PDOException $e) {
     // 23000 = unique constraint (geen dubbele taken binnen dezelfde lijst)
     $err = $e->getCode()==='23000' ? 'Deze taaknaam bestaat al in deze lijst' : 'Databasefout';
@@ -33,39 +35,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
   }
 }
 
-// sortering
-$type = $_GET['type'] ?? 'priority';
-$sort = $_GET['sort'] ?? 'desc';
-$sort = ($sort === 'ascending') ? 'asc' : (($sort === 'descending') ? 'desc' : $sort);
-$allowedTypes = ['title','priority']; $allowedSort = ['asc','desc'];
-if (!in_array($type,$allowedTypes,true)) $type='priority';
-if (!in_array($sort,$allowedSort,true)) $sort='desc';
+// sortering — exact volgens opdracht: ?sort=ascending|descending&type=title|priority
+$typeParam = $_GET['type'] ?? 'priority';
+$sortParam = $_GET['sort'] ?? 'descending';
+
+$type = in_array($typeParam, ['title','priority'], true) ? $typeParam : 'priority';
+$sortNormalized = in_array($sortParam, ['ascending','descending'], true) ? $sortParam : 'descending';
+$sort = $sortNormalized === 'ascending' ? 'asc' : 'desc';
 
 if ($type === 'title') {
   $orderBy = "t.is_done ASC, t.title $sort";
 } else {
-  // prioriteit: high bovenaan bij desc, laag bovenaan bij asc
+  // prioriteit: high bovenaan bij descending, low bovenaan bij ascending
   $orderBy = $sort === 'asc'
     ? "t.is_done ASC, FIELD(t.priority,'low','medium','high'), t.created_at DESC"
     : "t.is_done ASC, FIELD(t.priority,'high','medium','low'), t.created_at DESC";
 }
 
-$tasks = $pdo->prepare("SELECT t.* FROM tasks t
-                        JOIN lists l ON l.id=t.list_id
-                        WHERE t.list_id=? AND l.user_id=?
-                        ORDER BY $orderBy");
-$tasks->execute([$listId, $_SESSION['user_id']]);
-$tasks = $tasks->fetchAll();
+$tasksStmt = $pdo->prepare("SELECT t.* FROM tasks t
+                            JOIN lists l ON l.id=t.list_id
+                            WHERE t.list_id=? AND l.user_id=?
+                            ORDER BY $orderBy");
+$tasksStmt->execute([$listId, $_SESSION['user_id']]);
+$tasks = $tasksStmt->fetchAll();
 ?>
 <!doctype html><meta charset="utf-8"><title><?= Security::e($list['title']) ?></title>
 <h1><?= Security::e($list['title']) ?></h1>
 
 <p>
   Sorteren:
-  <a href="?id=<?= $listId ?>&type=title&sort=asc">Titel ↑</a> |
-  <a href="?id=<?= $listId ?>&type=title&sort=desc">Titel ↓</a> |
-  <a href="?id=<?= $listId ?>&type=priority&sort=desc">Prioriteit (hoog → laag)</a> |
-  <a href="?id=<?= $listId ?>&type=priority&sort=asc">Prioriteit (laag → hoog)</a>
+  <a href="?id=<?= $listId ?>&type=title&sort=ascending">Titel ↑</a> |
+  <a href="?id=<?= $listId ?>&type=title&sort=descending">Titel ↓</a> |
+  <a href="?id=<?= $listId ?>&type=priority&sort=descending">Prioriteit (hoog → laag)</a> |
+  <a href="?id=<?= $listId ?>&type=priority&sort=ascending">Prioriteit (laag → hoog)</a>
 </p>
 
 <?php if($msg): ?><p style="color:green"><?= Security::e($msg) ?></p><?php endif; ?>
@@ -85,11 +87,16 @@ $tasks = $tasks->fetchAll();
   <button>Toevoegen</button>
 </form>
 
+<?php if (!$tasks): ?>
+  <p>Nog geen taken.</p>
+<?php else: ?>
 <ul>
 <?php foreach($tasks as $t): ?>
   <li data-id="<?= (int)$t['id'] ?>" style="<?= $t['is_done'] ? 'text-decoration:line-through;color:#666;' : '' ?>">
     <input class="toggle" type="checkbox" <?= $t['is_done']?'checked':''; ?>>
-    <strong><?= Security::e($t['title']) ?></strong>
+    <a href="item.php?id=<?= (int)$t['id'] ?>">
+      <strong><?= Security::e($t['title']) ?></strong>
+    </a>
     <small>(<?= Security::e($t['priority']) ?>)</small>
     <form action="delete_task.php" method="post" style="display:inline">
       <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
@@ -100,6 +107,7 @@ $tasks = $tasks->fetchAll();
   </li>
 <?php endforeach; ?>
 </ul>
+<?php endif; ?>
 
 <p><a href="index.php">← Terug naar lijsten</a></p>
 
@@ -119,7 +127,6 @@ document.querySelectorAll('.toggle').forEach(cb=>{
       e.target.checked = !e.target.checked;
       return;
     }
-    // stijl updaten
     if(e.target.checked){ li.style.textDecoration='line-through'; li.style.color='#666'; }
     else { li.style.textDecoration=''; li.style.color=''; }
   });
