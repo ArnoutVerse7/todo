@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__.'/../config/config.php';
-require_once __DIR__.'/../src/Auth.php';
-require_once __DIR__.'/../src/Security.php';
-require_once __DIR__.'/../src/Database.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../src/Auth.php';
+require_once __DIR__ . '/../src/Security.php';
+require_once __DIR__ . '/../src/Database.php';
 
 Auth::requireLogin();
 header('Content-Type: application/json');
