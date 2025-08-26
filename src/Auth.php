@@ -6,10 +6,10 @@ class Auth {
   public static function register(string $email, string $password): void {
     $email = trim(strtolower($email));
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-      throw new InvalidArgumentException('Ongeldig e-mailadres');
+      throw new InvalidArgumentException('Invalid email address');
     }
-    if (strlen($password) < 8) {
-      throw new InvalidArgumentException('Wachtwoord moet minstens 8 tekens zijn');
+    if (strlen($password) < 4) {
+      throw new InvalidArgumentException('Password must be at least 4 characters long');
     }
     $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
     $pdo = Database::getConnection();

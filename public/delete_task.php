@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__.'/../config/config.php';
-require_once __DIR__.'/../src/Auth.php';
-require_once __DIR__.'/../src/Security.php';
-require_once __DIR__.'/../src/Database.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../src/Auth.php';
+require_once __DIR__ . '/../src/Security.php';
+require_once __DIR__ . '/../src/Database.php';
 
 Auth::requireLogin();
 Security::checkCsrf($_POST['csrf'] ?? '');
@@ -17,4 +17,4 @@ $stmt = $pdo->prepare("DELETE t FROM tasks t
                        WHERE t.id=? AND l.user_id=?");
 $stmt->execute([$taskId, $_SESSION['user_id']]);
 
-header('Location: /todo/public/list.php?id='.$listId);
+header('Location: /todo/public/list.php?id=' . $listId);
