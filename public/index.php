@@ -2,56 +2,124 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Security.php';
-require_once __DIR__ . '/../src/Models/TodoList.php';
 require_once __DIR__ . '/../src/Database.php';
+require_once __DIR__ . '/../src/Models/TodoList.php';
 
 Auth::requireLogin();
 
-$err = $msg = null;
+$err = null;
 
-// Nieuwe lijst toevoegen
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_list') {
-  Security::checkCsrf($_POST['csrf'] ?? '');
-  try {
-    $list = new TodoList($_SESSION['user_id'], $_POST['title'] ?? '');
-    $list->save();
-    $msg = 'Lijst toegevoegd';
-  } catch (Throwable $t) {
-    $err = $t->getMessage();
-  }
+// Flash éénmalig tonen
+$flash = $_SESSION['flash_success'] ?? null;
+unset($_SESSION['flash_success']);
+
+// Nieuwe lijst (PRG + flash)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'add_list')) {
+    Security::checkCsrf($_POST['csrf'] ?? '');
+    try {
+        $title = trim($_POST['title'] ?? '');
+        $list  = new TodoList($_SESSION['user_id'], $title);
+        $list->save();
+
+        $_SESSION['flash_success'] = 'Lijst toegevoegd';
+        header('Location: index.php');
+        exit;
+    } catch (Throwable $t) {
+        $err = $t->getMessage();
+    }
 }
 
-// Lijsten ophalen van ingelogde user
-$pdo = Database::getConnection();
-$stmt = $pdo->prepare("SELECT id, title, created_at FROM lists WHERE user_id = ? ORDER BY created_at DESC");
-$stmt->execute([$_SESSION['user_id']]);
-$lists = $stmt->fetchAll();
+// Lijsten + counters via model
+$lists = TodoList::allWithCountersByUser($_SESSION['user_id']);
 ?>
-<!doctype html><meta charset="utf-8"><title>Mijn lijsten</title>
-<h1>Mijn lijsten</h1>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="assets/style.css" rel="stylesheet">
+<title>My Todo Lists</title>
 
-<?php if($msg): ?><p style="color:green"><?= Security::e($msg) ?></p><?php endif; ?>
-<?php if($err): ?><p style="color:red"><?= Security::e($err) ?></p><?php endif; ?>
+<div class="container">
+    <div class="header">
+        <div class="h1">My Todo Lists</div>
+        <a href="logout.php" class="btn btn-outline">Logout</a>
+    </div>
 
-<form method="post" style="margin-bottom:1rem">
-  <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
-  <input type="hidden" name="action" value="add_list">
-  <label>Nieuwe lijst: <input name="title" required></label>
-  <button>Toevoegen</button>
-</form>
+    <?php if ($flash): ?>
+        <div id="flash" class="badge" style="background:#e7f9ef;color:#22863a;margin:12px 0;display:inline-block">
+            <?= Security::e($flash) ?>
+        </div>
+    <?php endif; ?>
 
-<ul>
-<?php foreach($lists as $l): ?>
-  <li>
-    <a href="list.php?id=<?= (int)$l['id'] ?>"><?= Security::e($l['title']) ?></a>
-    <small>(<?= Security::e($l['created_at']) ?>)</small>
-    <form action="delete_list.php" method="post" style="display:inline">
-      <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
-      <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-      <button>Verwijderen</button>
+    <?php if ($err): ?>
+        <div class="badge" style="background:#ffe3e3;color:#e03131;margin:12px 0;display:inline-block">
+            <?= Security::e($err) ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- Nieuwe lijst -->
+    <form method="post" class="card" style="margin-bottom:16px">
+        <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
+        <input type="hidden" name="action" value="add_list">
+        <div class="left" style="flex:1; gap:10px">
+            <span class="muted">New List</span>
+            <input name="title" required class="form-input" style="flex:0.99">
+        </div>
+        <div class="right">
+            <button class="btn btn-primary">Add</button>
+        </div>
     </form>
-  </li>
-<?php endforeach; ?>
-</ul>
 
-<p><a href="logout.php">Uitloggen</a></p>
+    <?php if (!$lists): ?>
+        <p class="muted">No lists yet.</p>
+    <?php else: ?>
+        <ul class="list">
+            <?php foreach ($lists as $l): ?>
+                <?php
+                $total    = (int)($l['total'] ?? 0);
+                $done     = (int)($l['done']  ?? 0);
+                $hasTasks = $total > 0;
+                $allDone  = $hasTasks && ($done === $total);
+                ?>
+                <li class="card">
+                    <div class="left">
+                        <div>
+                            <div class="muted">List</div>
+                            <a class="task-title" href="list.php?id=<?= (int)$l['id'] ?>">
+                                <?= Security::e($l['title']) ?>
+                            </a>
+                            <div class="muted" style="margin-top:4px">
+                                Created at: <?= Security::e($l['created_at']) ?>
+                            </div>
+                            <?php if ($hasTasks): ?>
+                                <div class="muted" style="margin-top:4px">
+                                    <?= $done ?> / <?= $total ?> completed
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="right">
+                        <?php if ($hasTasks): ?>
+                            <span class="status <?= $allDone ? 'done' : 'todo' ?>">
+                                <?= $allDone ? 'done' : 'to do' ?>
+                            </span>
+                        <?php endif; ?>
+                        <form action="delete_list.php" method="post">
+                            <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
+                            <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
+                            <button class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
+
+<script>
+    // flash automatisch weg
+    setTimeout(() => {
+        const f = document.getElementById('flash');
+        if (f) f.remove();
+    }, 2500);
+</script>
