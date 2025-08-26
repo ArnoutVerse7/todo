@@ -1,0 +1,299 @@
+/* ===== Base ===== */
+* {
+    box-sizing: border-box
+}
+
+html, body {
+    height: 100%
+}
+
+body {
+    margin: 0;
+    background: #fff;
+    color: #222;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Layout & Typography ===== */
+.container {
+    max-width: 980px;
+    margin: 36px auto;
+    padding: 0 18px
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px
+}
+
+.h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700
+}
+
+.muted {
+    color: #8892a6;
+    font-size: 12px
+}
+
+/* ===== Links (neutraal, geen underline) ===== */
+a, a:visited {
+    color: inherit;
+    text-decoration: none
+}
+
+a:hover {
+    text-decoration: none
+}
+
+/* ===== Buttons ===== */
+.btn {
+    border: 1px solid #e5e8ef;
+    background: #fff;
+    color: #2b2e3a;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
+    box-shadow: 0 6px 16px rgba(107, 91, 255, .06);
+}
+
+.btn:hover {
+    transform: translateY(-1px)
+}
+
+.btn:active {
+    transform: translateY(0)
+}
+
+.btn:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(107, 91, 255, .25)
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #6b5bff, #9b8aff);
+    border-color: #6b5bff;
+    color: #fff;
+    box-shadow: 0 10px 22px rgba(107, 91, 255, .25);
+}
+
+.btn-outline {
+    background: #fff
+}
+
+.btn-danger {
+    border-color: #ffd5d5;
+    background: #ffe3e3;
+    color: #e03131
+}
+
+.icon-btn {
+    background: #fff;
+    border: 1px solid #edf0f6;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #768394;
+    transition: box-shadow .2s ease, transform .06s ease;
+}
+
+.icon-btn:hover {
+    box-shadow: 0 10px 20px rgba(18, 22, 33, .06)
+}
+
+/* ===== Forms ===== */
+.form-input {
+    border: 1px solid #e6e9f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+    min-height: 40px;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #6b5bff;
+    box-shadow: 0 0 0 3px rgba(107, 91, 255, .25)
+}
+
+textarea.form-input {
+    resize: vertical
+}
+
+input[type="file"] {
+    border: 1px solid #e6e9f0;
+    border-radius: 10px;
+    padding: 8px;
+    background: #fff
+}
+
+/* ===== Cards/List ===== */
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px
+}
+
+.card {
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #eceff5;
+    box-shadow: 0 10px 20px rgba(18, 22, 33, .06);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card .left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0
+}
+
+.card .right {
+    display: flex;
+    align-items: center;
+    gap: 12px
+}
+
+.task-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+/* ===== Badges & Status ===== */
+.badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: #eef1f6;
+    color: #697386
+}
+
+.badge.p-high {
+    background: #ffe1e1;
+    color: #d92c2c
+}
+
+.badge.p-medium {
+    background: #fff1b8;
+    color: #c77c02
+}
+
+.badge.p-low {
+    background: #dcf7ef;
+    color: #2d9a55
+}
+
+.status {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: #eef1f6;
+    color: #748197
+}
+
+.status.done {
+    background: #e9eef5;
+    color: #8a95a5
+}
+
+.status.todo {
+    background: #f0f3fa
+}
+
+.status.progress {
+    background: #e9f2ff;
+    color: #2a6fdb
+}
+
+/* ===== Sort pills (compact) ===== */
+.card.sort {
+    justify-content: flex-start;
+    /* voorkom space-between op de sort-balk */
+    gap: 6px;
+    /* afstand tussen pills */
+    padding: 8px 12px;
+    /* iets dunner */
+}
+
+.card.sort>.muted {
+    margin-right: 6px;
+}
+
+.sort {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sort a {
+    background: #eef1f6;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 14px;
+}
+
+/* ===== Checkbox ===== */
+input[type="checkbox"].toggle {
+    accent-color: #6b5bff
+}
+
+/* ===== Done state ===== */
+.is-done .task-title {
+    color: #8a95a5;
+    text-decoration: line-through
+}
+
+.is-done .badge {
+    opacity: .6
+}
+
+/* ===== Responsive ===== */
+@media (max-width:640px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px
+    }
+
+    .card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px
+    }
+
+    .card .right {
+        justify-content: flex-end
+    }
+
+    .card.sort {
+        gap: 4px;
+        padding: 6px 10px
+    }
+
+    .sort a {
+        padding: 5px 9px;
+        font-size: 13px
+    }
+}
