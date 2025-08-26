@@ -1,39 +1,60 @@
 <?php
-require_once __DIR__.'/../config/config.php';
-require_once __DIR__.'/../src/Auth.php';
-require_once __DIR__.'/../src/Security.php';
-require_once __DIR__.'/../src/Database.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../src/Auth.php';
+require_once __DIR__ . '/../src/Security.php';
+require_once __DIR__ . '/../src/Database.php';
 
 Auth::requireLogin();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit('Method Not Allowed');
+}
+
 Security::checkCsrf($_POST['csrf'] ?? '');
-
 $taskId = (int)($_POST['task_id'] ?? 0);
+if ($taskId <= 0) {
+    http_response_code(400);
+    exit('Bad request');
+}
+
 $pdo = Database::getConnection();
+$own = $pdo->prepare("
+  SELECT t.id FROM tasks t
+  JOIN lists l ON l.id = t.list_id
+  WHERE t.id = ? AND l.user_id = ?
+");
+$own->execute([$taskId, $_SESSION['user_id']]);
+if (!$own->fetch()) {
+    http_response_code(403);
+    exit('Forbidden');
+}
 
-// eigendomscheck
-$own = $pdo->prepare("SELECT l.user_id FROM tasks t JOIN lists l ON l.id=t.list_id WHERE t.id=?");
-$own->execute([$taskId]);
-$row = $own->fetch();
-if (!$row || $row['user_id'] !== $_SESSION['user_id']) { http_response_code(403); exit('Forbidden'); }
+if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+    http_response_code(400);
+    exit('Upload failed');
+}
 
-// basisvalidatie
-if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) { exit('Upload fout'); }
-
-$f = $_FILES['file'];
-$allowed = ['application/pdf','image/png','image/jpeg','image/webp'];
 $finfo = new finfo(FILEINFO_MIME_TYPE);
-$mime = $finfo->file($f['tmp_name']);
-if (!in_array($mime, $allowed, true)) { exit('Ongeldig bestandstype'); }
-if ($f['size'] > 10*1024*1024) { exit('Max 10MB'); }
+$mime  = $finfo->file($_FILES['file']['tmp_name']);
+$allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+if (!in_array($mime, $allowed, true)) {
+    http_response_code(415);
+    exit('Unsupported file type');
+}
+if ($_FILES['file']['size'] > 10 * 1024 * 1024) {
+    http_response_code(413);
+    exit('Max 10MB');
+}
 
-$ext = pathinfo($f['name'], PATHINFO_EXTENSION);
-$stored = bin2hex(random_bytes(16)).($ext ? '.'.$ext : '');
-$dest = __DIR__.'/uploads/'.$stored;
+$ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+$stored = bin2hex(random_bytes(16)) . ($ext ? '.' . $ext : '');
+$dest = __DIR__ . '/uploads/' . $stored;
+if (!move_uploaded_file($_FILES['file']['tmp_name'], $dest)) {
+    http_response_code(500);
+    exit('Could not save file');
+}
 
-if (!move_uploaded_file($f['tmp_name'], $dest)) { exit('Kon bestand niet opslaan'); }
+$ins = $pdo->prepare("INSERT INTO attachments(task_id, original_name, stored_name, mime, size) VALUES(?,?,?,?,?)");
+$ins->execute([$taskId, $_FILES['file']['name'], $stored, $mime, $_FILES['file']['size']]);
 
-$ins = $pdo->prepare("INSERT INTO attachments(task_id, original_name, stored_name, mime, size)
-                      VALUES(?,?,?,?,?)");
-$ins->execute([$taskId, $f['name'], $stored, $mime, $f['size']]);
-
-header('Location: /todo/public/item.php?id='.$taskId);
+header('Location: item.php?id=' . $taskId . '#attachments');
