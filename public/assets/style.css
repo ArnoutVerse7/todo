@@ -11,9 +11,7 @@ body {
     margin: 0;
     background: #fff;
     color: #222;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    font-family: Roboto, sans-serif;
 }
 
 /* ===== Layout & Typography ===== */
@@ -32,7 +30,7 @@ body {
 
 .h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700
 }
 
@@ -41,14 +39,15 @@ body {
     font-size: 12px
 }
 
-/* ===== Links (neutraal, geen underline) ===== */
-a, a:visited {
+/* ===== Links (neutraal; geen blauw, geen underline) ===== */
+a, a:link, a:visited {
     color: inherit;
-    text-decoration: none
+    text-decoration: none;
 }
 
-a:hover {
-    text-decoration: none
+a:hover, a:active, a:focus {
+    color: #6b5bff;
+    text-decoration: none;
 }
 
 /* ===== Buttons ===== */
@@ -59,22 +58,7 @@ a:hover {
     border-radius: 999px;
     padding: 10px 16px;
     font-weight: 600;
-    cursor: pointer;
-    transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
     box-shadow: 0 6px 16px rgba(107, 91, 255, .06);
-}
-
-.btn:hover {
-    transform: translateY(-1px)
-}
-
-.btn:active {
-    transform: translateY(0)
-}
-
-.btn:focus-visible {
-    outline: 0;
-    box-shadow: 0 0 0 3px rgba(107, 91, 255, .25)
 }
 
 .btn-primary {
@@ -229,11 +213,8 @@ input[type="file"] {
 /* ===== Sort pills (compact) ===== */
 .card.sort {
     justify-content: flex-start;
-    /* voorkom space-between op de sort-balk */
     gap: 6px;
-    /* afstand tussen pills */
     padding: 8px 12px;
-    /* iets dunner */
 }
 
 .card.sort>.muted {
@@ -252,6 +233,7 @@ input[type="file"] {
     padding: 6px 10px;
     border-radius: 999px;
     font-size: 14px;
+    color: #222;
 }
 
 /* ===== Checkbox ===== */
