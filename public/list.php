@@ -1,4 +1,5 @@
 <?php
+// Lijst-detail: eigendom check, taken toevoegen, sorteren, AJAX toggle.
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Security.php';
@@ -9,8 +10,9 @@ Auth::requireLogin();
 
 $listId = (int)($_GET['id'] ?? 0);
 
-// lijst ophalen + eigendom
 $pdo = Database::getConnection();
+
+// lijst ophalen + controleren dat ze van de ingelogde user is
 $stmt = $pdo->prepare("SELECT id, title FROM lists WHERE id=? AND user_id=?");
 $stmt->execute([$listId, $_SESSION['user_id']]);
 $list = $stmt->fetch();
@@ -19,32 +21,35 @@ if (!$list) {
     exit('List not found');
 }
 
-$err   = null;
-// flash message
+$err = null;
+
+// flash (1x tonen)
 $flash = $_SESSION['flash_success'] ?? null;
 unset($_SESSION['flash_success']);
 
-// toevoegen (PRG)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
+// taak toevoegen (POST) met CSRF + PRG
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'add')) {
     Security::checkCsrf($_POST['csrf'] ?? '');
     try {
         (new Task($listId, $_POST['title'] ?? '', $_POST['priority'] ?? 'low'))->save();
         $_SESSION['flash_success'] = 'Task added successfully';
-        header('Location: list.php?id=' . $listId);
+        header('Location: list.php?id=' . $listId); // PRG
         exit;
     } catch (PDOException $e) {
+        // 23000 = unique constraint: dubbele titel in dezelfde lijst
         $err = $e->getCode() === '23000' ? 'This task name already exists in this list' : 'Database error';
     } catch (Throwable $t) {
         $err = $t->getMessage();
     }
 }
 
-// sortering
+// sorteer-parameters whitelisten
 $typeParam = $_GET['type'] ?? 'priority';
 $sortParam = $_GET['sort'] ?? 'descending';
 $type = in_array($typeParam, ['title', 'priority'], true) ? $typeParam : 'priority';
 $sort = ($sortParam === 'ascending') ? 'asc' : 'desc';
 
+// order by opbouwen (open items eerst)
 if ($type === 'title') {
     $orderBy = "t.is_done ASC, t.title $sort";
 } else {
@@ -53,6 +58,7 @@ if ($type === 'title') {
         : "t.is_done ASC, FIELD(t.priority,'high','medium','low'), t.created_at DESC";
 }
 
+// taken ophalen (alleen binnen lijst van user)
 $tasksStmt = $pdo->prepare("SELECT t.* FROM tasks t
                             JOIN lists l ON l.id=t.list_id
                             WHERE t.list_id=? AND l.user_id=?
@@ -73,6 +79,7 @@ $tasks = $tasksStmt->fetchAll();
         <a href="index.php" class="btn btn-outline">← Back to lists</a>
     </div>
 
+    <!-- sorteerbalk -->
     <div class="card sort" style="gap:8px; align-items:center">
         <span class="muted">Sort by:</span>
         <a href="?id=<?= $listId ?>&type=title&sort=ascending">Title ↑</a>
@@ -82,17 +89,19 @@ $tasks = $tasksStmt->fetchAll();
     </div>
 
     <?php if ($flash): ?>
+        <!-- succesmelding (verdwijnt via JS) -->
         <div id="flash" class="badge" style="background:#e7f9ef;color:#22863a;margin:12px 0;display:inline-block">
             <?= Security::e($flash) ?>
         </div>
     <?php endif; ?>
     <?php if ($err): ?>
+        <!-- foutmelding -->
         <div class="badge" style="background:#ffe3e3;color:#e03131;margin:12px 0;display:inline-block">
             <?= Security::e($err) ?>
         </div>
     <?php endif; ?>
 
-    <!-- Add task -->
+    <!-- taak toevoegen -->
     <form method="post" class="card" style="margin-bottom:16px">
         <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
         <input type="hidden" name="action" value="add">
@@ -111,7 +120,7 @@ $tasks = $tasksStmt->fetchAll();
         </div>
     </form>
 
-    <!-- Tasks -->
+    <!-- takenlijst -->
     <?php if (!$tasks): ?>
         <p class="muted">No tasks yet.</p>
     <?php else: ?>
@@ -122,6 +131,7 @@ $tasks = $tasksStmt->fetchAll();
             ?>
                 <li class="<?= $rowClass ?>" data-id="<?= (int)$t['id'] ?>">
                     <div class="left">
+                        <!-- checkbox: done/todo via AJAX -->
                         <input class="toggle" type="checkbox" <?= $t['is_done'] ? 'checked' : ''; ?>>
                         <div>
                             <div class="muted">Task</div>
@@ -135,6 +145,7 @@ $tasks = $tasksStmt->fetchAll();
                             <span class="badge <?= $prioClass ?>"><?= Security::e($t['priority']) ?></span>
                         </div>
 
+                        <!-- verwijderen -->
                         <form action="delete_task.php" method="post">
                             <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
                             <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
@@ -149,11 +160,12 @@ $tasks = $tasksStmt->fetchAll();
 </div>
 
 <script>
-    // Toggle done/undo via AJAX
+    // AJAX toggle done/undo
     document.querySelectorAll('.toggle').forEach(cb => {
         cb.addEventListener('change', async (e) => {
             const li = e.target.closest('li');
             const id = li.dataset.id;
+
             const res = await fetch('toggle_task.php', {
                 method: 'POST',
                 headers: {
@@ -164,18 +176,20 @@ $tasks = $tasksStmt->fetchAll();
                     csrf: "<?= Security::csrfToken(); ?>"
                 })
             });
+
             const data = await res.json();
             if (!data.ok) {
                 alert('Could not change status');
                 e.target.checked = !e.target.checked;
                 return;
             }
+            // stijl aanpassen
             if (e.target.checked) li.classList.add('is-done');
             else li.classList.remove('is-done');
         });
     });
 
-    // Flash message auto-hide
+    // flash automatisch weg
     setTimeout(() => {
         const f = document.getElementById('flash');
         if (f) f.remove();

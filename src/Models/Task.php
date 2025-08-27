@@ -1,5 +1,5 @@
 <?php
-// src/Models/Task.php
+// Task-model: simpele validatie + opslaan.
 require_once __DIR__ . '/../Database.php';
 
 class Task
@@ -17,18 +17,23 @@ class Task
         $this->isDone = $isDone;
     }
 
+    // list_id moet geldig zijn
     private function setListId(int $id): void
     {
         if ($id <= 0) throw new InvalidArgumentException('Invalid list');
         $this->listId = $id;
     }
+
+    // titel trimmen + basisvalidatie
     public function setTitle(string $t): void
     {
         $t = trim($t);
-        if ($t === '') throw new InvalidArgumentException('Title cannot be empty');
+        if ($t === '')         throw new InvalidArgumentException('Title cannot be empty');
         if (mb_strlen($t) > 150) throw new InvalidArgumentException('Title is too long');
         $this->title = $t;
     }
+
+    // enkel low/medium/high
     public function setPriority(string $p): void
     {
         $allowed = ['low', 'medium', 'high'];
@@ -36,6 +41,7 @@ class Task
         $this->priority = $p;
     }
 
+    // wegschrijven naar DB (is_done als int 0/1)
     public function save(): void
     {
         $pdo = Database::getConnection();

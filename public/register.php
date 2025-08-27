@@ -1,4 +1,5 @@
 <?php
+// Registratiepagina: valideert invoer, gebruikt CSRF en toont fouten.
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../src/Security.php';
 require_once __DIR__ . '/../src/Auth.php';
@@ -6,15 +7,22 @@ require_once __DIR__ . '/../src/Auth.php';
 $err = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  Security::checkCsrf($_POST['csrf'] ?? '');
+  Security::checkCsrf($_POST['csrf'] ?? ''); // CSRF check
+
   try {
+    // basisvalidatie: wachtwoorden gelijk
     if (($_POST['password'] ?? '') !== ($_POST['password_confirm'] ?? '')) {
       throw new InvalidArgumentException('Passwords do not match');
     }
+
+    // registreren (verder valideren + bcrypt in Auth::register)
     Auth::register(trim($_POST['email'] ?? ''), $_POST['password'] ?? '');
+
+    // PRG: redirect naar login met melding
     header('Location: /todo/public/login.php?registered=1');
     exit;
   } catch (PDOException $e) {
+    // 1062 = duplicate key (email bestaat al)
     $err = ($e->errorInfo[1] ?? null) === 1062 ? 'Email already exists' : 'Database error';
   } catch (Throwable $t) {
     $err = $t->getMessage();
@@ -28,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Register</title>
 
 <style>
-  /* page-specific fix: kaart in kolom i.p.v. rij */
+  /* specifieke layout voor de auth-kaart */
   .auth-card {
     display: flex;
     flex-direction: column;
@@ -62,11 +70,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <p class="muted">Create a new account</p>
 
     <?php if ($err): ?>
+      <!-- foutboodschap uit PHP -->
       <div class="badge" style="background:#ffe3e3;color:#e03131;margin-bottom:8px;display:inline-block">
         <?= Security::e($err) ?>
       </div>
     <?php endif; ?>
 
+    <!-- formulier (POST) -->
     <form method="post" autocomplete="off">
       <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
 

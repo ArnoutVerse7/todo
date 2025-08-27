@@ -1,5 +1,5 @@
 <?php
-// src/Models/TodoList.php
+// Model voor lijsten: validatie, opslaan, verwijderen, ophalen met counters.
 require_once __DIR__ . '/../Database.php';
 
 final class TodoList
@@ -12,15 +12,26 @@ final class TodoList
     {
         $this->setUserId($userId);
         $this->setTitle($title);
-        if ($id !== null) { $this->id = $id; }
+        if ($id !== null) {
+            $this->id = $id;
+        }
     }
 
-    // --- getters ---
-    public function getId(): ?int     { return $this->id; }
-    public function getUserId(): int  { return $this->userId; }
-    public function getTitle(): string{ return $this->title; }
+    // getters
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+    public function getUserId(): int
+    {
+        return $this->userId;
+    }
+    public function getTitle(): string
+    {
+        return $this->title;
+    }
 
-    // --- setters & validatie ---
+    // setters (basisvalidatie)
     public function setUserId(int $id): void
     {
         if ($id <= 0) throw new InvalidArgumentException('Invalid user');
@@ -30,21 +41,21 @@ final class TodoList
     public function setTitle(string $title): void
     {
         $t = trim($title);
-        if ($t === '')              throw new InvalidArgumentException('Title cannot be empty');
-        if (mb_strlen($t) > 150)    throw new InvalidArgumentException('Title is too long');
+        if ($t === '')           throw new InvalidArgumentException('Title cannot be empty');
+        if (mb_strlen($t) > 150) throw new InvalidArgumentException('Title is too long');
         $this->title = $t;
     }
 
-    // --- create ---
+    // Nieuwe lijst opslaan
     public function save(): void
     {
         $pdo = Database::getConnection();
         $stmt = $pdo->prepare("INSERT INTO lists (user_id, title) VALUES (?, ?)");
         $stmt->execute([$this->userId, $this->title]);
-        $this->id = (int)$pdo->lastInsertId();
+        $this->id = (int)$pdo->lastInsertId(); // id bijhouden
     }
 
-    // --- delete (met eigendomscheck) ---
+    // Lijst verwijderen (alleen als deze van de user is)
     public static function delete(int $id, int $userId): bool
     {
         $pdo = Database::getConnection();
@@ -53,7 +64,7 @@ final class TodoList
         return $stmt->rowCount() === 1;
     }
 
-    // --- ophalen mét counters (voor index.php status badges) ---
+    // Alle lijsten van user met task-counters (total/done) voor statusweergave
     public static function allWithCountersByUser(int $userId): array
     {
         $pdo = Database::getConnection();

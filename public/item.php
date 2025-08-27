@@ -1,4 +1,5 @@
 <?php
+// Detail van één task: eigendom check, comments tonen/toevoegen, bestanden tonen/uploaden.
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Security.php';
@@ -14,6 +15,8 @@ if ($taskId <= 0) {
 }
 
 $pdo = Database::getConnection();
+
+// Task + lijst ophalen, en controleren dat de lijst van de ingelogde user is
 $stmt = $pdo->prepare("
   SELECT t.*, l.title AS list_title
   FROM tasks t
@@ -27,16 +30,19 @@ if (!$task) {
     exit('Item not found');
 }
 
+// Comment toevoegen (POST + CSRF), daarna redirect (PRG)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Security::checkCsrf($_POST['csrf'] ?? '');
     try {
         Comment::create($taskId, $_POST['body'] ?? '');
     } catch (Throwable $e) {
+        // bij validatiefout gewoon niets opslaan
     }
     header('Location: item.php?id=' . $taskId . '#comments');
     exit;
 }
 
+// Comments en bestanden ophalen
 $cq = $pdo->prepare("SELECT body, created_at FROM comments WHERE task_id=? ORDER BY created_at DESC");
 $cq->execute([$taskId]);
 $comments = $cq->fetchAll();
@@ -58,7 +64,7 @@ $files = $fq->fetchAll();
         <a href="list.php?id=<?= (int)$task['list_id'] ?>" class="btn btn-outline">← Back</a>
     </div>
 
-    <!-- Info card -->
+    <!-- Info over de taak -->
     <div class="card" style="margin-bottom:16px">
         <div class="left" style="gap:24px">
             <div>
@@ -66,7 +72,7 @@ $files = $fq->fetchAll();
                 <div class="task-title"><?= Security::e($task['list_title']) ?></div>
             </div>
             <div>
-                <div class="muted">Prioriteit</div>
+                <div class="muted">Priority</div>
                 <?php
                 $prioClass = $task['priority'] === 'high' ? 'p-high' : ($task['priority'] === 'medium' ? 'p-medium' : 'p-low');
                 ?>
@@ -110,7 +116,7 @@ $files = $fq->fetchAll();
         </div>
     </div>
 
-    <!-- Upload -->
+    <!-- Upload formulier -->
     <div class="card" style="margin-bottom:16px">
         <form action="upload.php" method="post" enctype="multipart/form-data" style="display:flex; gap:12px; align-items:center; width:100%">
             <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
@@ -120,7 +126,7 @@ $files = $fq->fetchAll();
         </form>
     </div>
 
-    <!-- Files -->
+    <!-- Bestandenlijst -->
     <div class="card">
         <div style="width:100%">
             <div class="muted" style="margin-bottom:8px">Files</div>
@@ -138,6 +144,7 @@ $files = $fq->fetchAll();
                                 <span class="muted">(<?= Security::e($f['created_at']) ?>)</span>
                             </div>
                             <div class="right">
+                                <!-- Verwijderen via AJAX -->
                                 <form class="del-attach" method="post" action="delete_attachment.php">
                                     <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
                                     <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
@@ -154,12 +161,13 @@ $files = $fq->fetchAll();
 </div>
 
 <script>
-    // AJAX: bijlage verwijderen zonder refresh
+    // Bijlage verwijderen via fetch, zonder page refresh
     document.querySelectorAll('.del-attach').forEach(form => {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const li = form.closest('li');
             const fd = new FormData(form);
+
             const res = await fetch(form.action, {
                 method: 'POST',
                 body: fd,
@@ -168,16 +176,15 @@ $files = $fq->fetchAll();
                     'Accept': 'application/json'
                 }
             });
+
             let ok = false;
             try {
                 const data = await res.json();
                 ok = !!data.ok;
             } catch (_) {}
-            if (ok) {
-                li.remove();
-            } else {
-                alert('Delete failed.');
-            }
+
+            if (ok) li.remove();
+            else alert('Delete failed.');
         });
     });
 </script>

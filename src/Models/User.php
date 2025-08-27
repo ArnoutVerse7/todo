@@ -1,4 +1,5 @@
 <?php
+// Eenvoudig User-model met basisvalidatie en finder.
 require_once __DIR__ . '/../Database.php';
 
 class User
@@ -11,17 +12,24 @@ class User
         $this->setId($id);
         $this->setEmail($email);
     }
+
+    // Id moet positief zijn
     public function setId(int $id): void
     {
         if ($id <= 0) throw new InvalidArgumentException('Invalid user id');
         $this->id = $id;
     }
+
+    // E-mail normaliseren + valideren
     public function setEmail(string $email): void
     {
         $e = trim(strtolower($email));
-        if (!filter_var($e, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('Invalid email address');
+        if (!filter_var($e, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Invalid email address');
+        }
         $this->email = $e;
     }
+
     public function getId(): int
     {
         return $this->id;
@@ -31,6 +39,7 @@ class User
         return $this->email;
     }
 
+    // Haal een user op via id (of null als niet gevonden)
     public static function findById(int $id): ?User
     {
         $pdo = Database::getConnection();

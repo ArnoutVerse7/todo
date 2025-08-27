@@ -1,20 +1,22 @@
 <?php
-// src/Security.php
+// Kleine helpers: XSS-escape + CSRF token/check.
+// (Zorg dat session_start() al gebeurd is.)
+
 class Security {
-  // Escape voor veilige output (tegen XSS)
+  // Veilige HTML-output (tegen XSS)
   public static function e(?string $s): string {
     return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   }
 
-  // CSRF-token genereren/halen
+  // CSRF-token per sessie (aanmaken of ophalen)
   public static function csrfToken(): string {
     if (empty($_SESSION['csrf'])) {
-      $_SESSION['csrf'] = bin2hex(random_bytes(32));
+      $_SESSION['csrf'] = bin2hex(random_bytes(32)); // 64 hex chars
     }
     return $_SESSION['csrf'];
   }
 
-  // CSRF-token valideren
+  // CSRF controleren, stop bij fout
   public static function checkCsrf(string $token): void {
     if (!hash_equals($_SESSION['csrf'] ?? '', $token)) {
       http_response_code(403);

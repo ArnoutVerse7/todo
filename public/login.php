@@ -1,15 +1,19 @@
 <?php
+// Inlogpagina: CSRF check, login proberen, bij succes redirect.
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../src/Security.php';
 require_once __DIR__ . '/../src/Auth.php';
 
+// Info na registratie (via ?registered=1)
 $info = isset($_GET['registered']) ? 'Account aangemaakt. Log nu in.' : null;
 $err = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  Security::checkCsrf($_POST['csrf'] ?? '');
+  Security::checkCsrf($_POST['csrf'] ?? ''); // CSRF
+
+  // Probeer in te loggen
   if (Auth::login(trim($_POST['email'] ?? ''), $_POST['password'] ?? '')) {
-    header('Location: /todo/public/index.php');
+    header('Location: /todo/public/index.php'); // naar dashboard
     exit;
   } else {
     $err = 'Incorrect combination';
@@ -23,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Login</title>
 
 <style>
+  /* specifieke layout */
   .auth-card {
     display: flex;
     flex-direction: column;
@@ -56,17 +61,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <p class="muted">Welcome back</p>
 
     <?php if ($info): ?>
+      <!-- melding na registratie -->
       <div id="flash" class="badge" style="background:#e7f9ef;color:#22863a;margin-bottom:8px;display:inline-block">
         <?= Security::e($info) ?>
       </div>
     <?php endif; ?>
 
     <?php if ($err): ?>
+      <!-- foutmelding -->
       <div class="badge" style="background:#ffe3e3;color:#e03131;margin-bottom:8px;display:inline-block">
         <?= Security::e($err) ?>
       </div>
     <?php endif; ?>
 
+    <!-- inlogformulier -->
     <form method="post" autocomplete="off">
       <input type="hidden" name="csrf" value="<?= Security::csrfToken(); ?>">
 
@@ -87,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-  // laat info-bericht (na registratie) vanzelf verdwijnen
+  // info-bericht automatisch verbergen
   setTimeout(() => {
     const f = document.getElementById('flash');
     if (f) f.remove();

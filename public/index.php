@@ -1,4 +1,5 @@
 <?php
+// Startpagina na login: lijsten tonen, nieuwe lijst toevoegen (met CSRF), flash-melding.
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Security.php';
@@ -9,11 +10,11 @@ Auth::requireLogin();
 
 $err = null;
 
-// Flash éénmalig tonen
+// Flash 1x tonen
 $flash = $_SESSION['flash_success'] ?? null;
 unset($_SESSION['flash_success']);
 
-// Nieuwe lijst (PRG + flash)
+// Nieuwe lijst via POST (PRG + CSRF)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'add_list')) {
     Security::checkCsrf($_POST['csrf'] ?? '');
     try {
@@ -22,14 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'add_
         $list->save();
 
         $_SESSION['flash_success'] = 'Lijst toegevoegd';
-        header('Location: index.php');
+        header('Location: index.php'); // PRG
         exit;
     } catch (Throwable $t) {
         $err = $t->getMessage();
     }
 }
 
-// Lijsten + counters via model
+// Lijsten + counters voor statusbadge
 $lists = TodoList::allWithCountersByUser($_SESSION['user_id']);
 ?>
 <!doctype html>
@@ -45,12 +46,14 @@ $lists = TodoList::allWithCountersByUser($_SESSION['user_id']);
     </div>
 
     <?php if ($flash): ?>
+        <!-- succesmelding -->
         <div id="flash" class="badge" style="background:#e7f9ef;color:#22863a;margin:12px 0;display:inline-block">
             <?= Security::e($flash) ?>
         </div>
     <?php endif; ?>
 
     <?php if ($err): ?>
+        <!-- foutmelding -->
         <div class="badge" style="background:#ffe3e3;color:#e03131;margin:12px 0;display:inline-block">
             <?= Security::e($err) ?>
         </div>
@@ -100,6 +103,7 @@ $lists = TodoList::allWithCountersByUser($_SESSION['user_id']);
 
                     <div class="right">
                         <?php if ($hasTasks): ?>
+                            <!-- eenvoudige statusbadge -->
                             <span class="status <?= $allDone ? 'done' : 'todo' ?>">
                                 <?= $allDone ? 'done' : 'to do' ?>
                             </span>
@@ -117,7 +121,7 @@ $lists = TodoList::allWithCountersByUser($_SESSION['user_id']);
 </div>
 
 <script>
-    // flash automatisch weg
+    // Flash automatisch verbergen
     setTimeout(() => {
         const f = document.getElementById('flash');
         if (f) f.remove();
