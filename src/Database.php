@@ -9,7 +9,7 @@ class Database
     static $pdo = null; // één instance per request
     if ($pdo === null) {
       // DSN op basis van config-constanten
-      $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+      $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
 
       // Maak PDO en zet basis opties
       $pdo = new PDO($dsn, DB_USER, DB_PASS, [
