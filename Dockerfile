@@ -13,9 +13,15 @@ RUN a2enmod rewrite \
 </Directory>\n" > /etc/apache2/conf-available/app.conf \
  && a2enconf app
 
-# (optioneel) HTTPS correct detecteren achter proxy
-RUN printf "SetEnvIfNoCase X-Forwarded-Proto https HTTPS=on\n" > /etc/apache2/conf-available/forwarded-https.conf \
- && a2enconf forwarded-https
+# ► DirectoryIndex naar index.php (zekerheidje)
+RUN printf "<IfModule mod_dir.c>\nDirectoryIndex index.php index.html\n</IfModule>\n" \
+  > /etc/apache2/conf-available/dirindex.conf \
+  && a2enconf dirindex
 
-# Code kopiëren
+# (optioneel) HTTPS correct detecteren achter proxy
+RUN printf "SetEnvIfNoCase X-Forwarded-Proto https HTTPS=on\n" \
+  > /etc/apache2/conf-available/forwarded-https.conf \
+  && a2enconf forwarded-https
+
+# Code kopiëren (neemt .htaccess mee)
 COPY . /var/www/html
